@@ -6,7 +6,7 @@ pharo pharo-ui Pharo.image:
 	
 tuqui.image: pharo Pharo.image
 	./pharo Pharo.image save tuqui
-	./pharo $@ eval --save "Metacello new baseline: 'Tuqui'; repository: 'github://melkyades/tuqui-pharo:main/'; load"
+	./pharo $@ eval --save "Metacello new baseline: 'Tuqui'; repository: 'github://emystein/tuqui-pharo:main/'; load"
 	@echo ""
 	@echo "To open Tuqui image run:"
 	@echo ""
