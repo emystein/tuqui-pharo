@@ -63,6 +63,13 @@ TqRecursiveEvaluator >> initializePrimitives [
 		at: #ClosureWhileFalse put: self primitiveClosureWhileFalse
 ]
 
+{ #category : #accessing }
+TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [ 
+	| methodDictionary |
+	methodDictionary := behavior slots at: 2.
+	^ methodDictionary atKey: aSymbol ifAbsent: [ nil ].
+]
+
 { #category : #visiting }
 TqRecursiveEvaluator >> primitiveClosureWhileFalse [
 	^ [ self
@@ -78,14 +85,17 @@ TqRecursiveEvaluator >> primitiveClosureWhileTrue [
 ]
 
 { #category : #controlling }
-TqRecursiveEvaluator >> send: aTqByteObject to: aTqSlotObject with: aCollection super: aBoolean [ 
-	^ aTqSlotObject
+TqRecursiveEvaluator >> send: aSymbol to: receiver with: arguments super: aBoolean [ 
+	^  self send: aSymbol to: receiver with: arguments super: aBoolean sendSite: nil
 ]
 
 { #category : #visiting }
 TqRecursiveEvaluator >> send: aSymbol to: receiver with: arguments super: aBoolean sendSite: anSMessage [
 
 	| behavior method environment size |
+	
+	aSymbol asLocalString = 'yourself' ifTrue: [ ^ receiver ].
+	
 	behavior := aBoolean
 		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
 		            ifFalse: [ runtime behaviorOf: receiver ].
@@ -113,4 +123,33 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 	| superclass |
 	superclass := self speciesSuperclass: class.
 	^ self speciesInstanceBehavior: superclass
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [ 
+	^ aTqIdentifier binding valueWithin: self context
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitMessage: aTqMessage [ 
+	| receiver args method |
+	receiver := aTqMessage receiver
+	acceptVisitor: self.
+	args := aTqMessage args collect: [:arg | arg acceptVisitor: self].
+	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
+	self pushFrameFor: method recv: receiver args: args.
+	self visitMethod: method ast
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitMethod: aTqMethod [
+
+	| last result |
+	last := nil.
+	aTqMethod statements do: [ :node |
+		last := node.
+		result := node acceptVisitor: self ].
+	^ (last notNil and: [ last isReturn ])
+		  ifTrue: [ result ]
+		  ifFalse: [ self context receiver ]
 ]
