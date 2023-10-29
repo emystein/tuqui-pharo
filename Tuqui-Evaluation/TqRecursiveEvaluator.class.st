@@ -77,6 +77,11 @@ TqRecursiveEvaluator >> primitiveClosureWhileTrue [
 		whileTrue: context arguments first ]
 ]
 
+{ #category : #controlling }
+TqRecursiveEvaluator >> send: aTqByteObject to: aTqSlotObject with: aCollection super: aBoolean [ 
+	^ aTqSlotObject
+]
+
 { #category : #visiting }
 TqRecursiveEvaluator >> send: aSymbol to: receiver with: arguments super: aBoolean sendSite: anSMessage [
 
