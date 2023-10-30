@@ -154,8 +154,9 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 ]
 
 { #category : #visiting }
-TqRecursiveEvaluator >> visitBlock: aTqBlock [ 
-	self context captureClosure: aTqBlock.
+TqRecursiveEvaluator >> visitBlock: aTqBlock [
+	"self context captureClosure: aTqBlock."
+	
 
 ]
 
@@ -167,13 +168,20 @@ TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
-	| receiver args method |
+	| receiver args method sexpressions |
+	
 	receiver := aTqMessage receiver acceptVisitor: self.
-	args := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
+	args := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
+	
 	(undermessages includesKey: method) ifTrue: [
-		^ (undermessages at: method) value: receiver value: aTqMessage arguments ].
-	self visitMethod: method ast
+		^ (undermessages at: method) value: receiver value: args ].
+	
+	"self context receiver: receiver; method: method; arguments: args."
+	
+	sexpressions := runtime sexpressionsOf: method.
+	
+	self visitMethod: sexpressions.
 ]
 
 { #category : #visiting }
@@ -230,12 +238,9 @@ TqRecursiveEvaluator >> visitReturn: aTqReturn [
 	
 	| value |
 
-	aTqReturn local
-		ifFalse: [^self visitNonLocalReturn: aTqReturn].
-
 	value := aTqReturn expression acceptVisitor: self.
 
-	self context pop.
+	"self context pop."
 
-	^ value
+	^ self context return: value
 ]
