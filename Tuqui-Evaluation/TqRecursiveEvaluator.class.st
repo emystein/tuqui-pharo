@@ -5,6 +5,20 @@ Class {
 }
 
 { #category : #visiting }
+TqRecursiveEvaluator >> evalMethodStatements: aTqMethod [
+
+	| last result |
+	last := nil.
+	aTqMethod statements do: [ :node |
+		last := node.
+		result := node acceptVisitor: self ].
+	^ (last notNil and: [ last isReturn ])
+		  ifTrue: [ result ]
+		  ifFalse: [ self context receiver ]
+ 
+]
+
+{ #category : #visiting }
 TqRecursiveEvaluator >> evaluateClosure: receiver whileFalse: arg [
 	| result |
 	[ result := self evaluateClosure: receiver.
@@ -64,10 +78,24 @@ TqRecursiveEvaluator >> initializePrimitives [
 ]
 
 { #category : #accessing }
-TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [ 
-	| methodDictionary |
-	methodDictionary := behavior slots at: 2.
+TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [
+| methodDictionary |
+	"
+	^ behavior isImmediate
+						ifTrue: [ aSymbol ]
+						ifFalse: [ 
+								methodDictionary := behavior slots at: 2.
+								methodDictionary atKey: aSymbol ifAbsent: [ nil ].
+							 ]
+"
+	behavior isImmediate ifTrue: [ ^ aSymbol ].
+	
+	methodDictionary := behavior slots
+		ifEmpty: [ behavior behavior slots at: 2 ] 
+		ifNotEmpty: [ behavior slots at: 2].
+		
 	^ methodDictionary atKey: aSymbol ifAbsent: [ nil ].
+
 ]
 
 { #category : #visiting }
@@ -126,24 +154,66 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 ]
 
 { #category : #visiting }
+TqRecursiveEvaluator >> visitBlock: aTqBlock [ 
+	self context captureClosure: aTqBlock.
+
+]
+
+{ #category : #visiting }
 TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [ 
 	^ aTqIdentifier binding valueWithin: self context
 ]
 
 { #category : #visiting }
-TqRecursiveEvaluator >> visitMessage: aTqMessage [ 
+TqRecursiveEvaluator >> visitMessage: aTqMessage [
+
 	| receiver args method |
-	receiver := aTqMessage receiver
-	acceptVisitor: self.
-	args := aTqMessage args collect: [:arg | arg acceptVisitor: self].
+	receiver := aTqMessage receiver acceptVisitor: self.
+	args := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
-	self pushFrameFor: method recv: receiver args: args.
+	(undermessages includesKey: method) ifTrue: [
+		^ (undermessages at: method) value: receiver value: aTqMessage arguments ].
 	self visitMethod: method ast
 ]
 
 { #category : #visiting }
-TqRecursiveEvaluator >> visitMethod: aTqMethod [
+TqRecursiveEvaluator >> visitMessageBackup: aTqMessage [
 
+	| receiver args method |
+	
+	receiver := aTqMessage receiver acceptVisitor: self.
+
+"
+	
+	(undermessages includesKey: aTqMessage selector)
+			ifTrue: [ ^ (undermessages at: aTqMessage selector) value: receiver value: aTqMessage arguments].
+
+	
+	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
+	
+
+" 
+
+"
+	args := aTqMessage arguments collect: [:arg | arg acceptVisitor: self].
+	"
+	
+	"
+	self pushFrameFor: method recv: receiver args: args.
+	"
+
+"
+	self visitMethod: method ast
+"
+
+	(undermessages includesKey: aTqMessage selector)
+			ifTrue: [ ^ (undermessages at: aTqMessage selector) value: receiver value: aTqMessage arguments].
+			
+	self shouldBeImplemented 
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitMethod: aTqMethod [
 	| last result |
 	last := nil.
 	aTqMethod statements do: [ :node |
@@ -152,4 +222,20 @@ TqRecursiveEvaluator >> visitMethod: aTqMethod [
 	^ (last notNil and: [ last isReturn ])
 		  ifTrue: [ result ]
 		  ifFalse: [ self context receiver ]
+
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitReturn: aTqReturn [ 
+	
+	| value |
+
+	aTqReturn local
+		ifFalse: [^self visitNonLocalReturn: aTqReturn].
+
+	value := aTqReturn expression acceptVisitor: self.
+
+	self context pop.
+
+	^ value
 ]

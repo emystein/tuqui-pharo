@@ -10,9 +10,7 @@ Class {
 { #category : #'as yet unclassified' }
 TqRecursiveLinkedContext >> evaluateFor: interpreter [
 	| sexpressions result |
-	nonLocalReturn := [ :value | 
-	interpreter context: self homeContext parent.
-	^ value ].
+	nonLocalReturn := [ :value | interpreter context: self homeContext parent. ^ value ].
 	sexpressions := runtime sexpressionsOf: method.
 	result := interpreter visitMethod: sexpressions.
 	interpreter context: self parent.

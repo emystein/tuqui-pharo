@@ -17,6 +17,12 @@ TqMethod >> isMethod [
 	^true
 ]
 
+{ #category : #testing }
+TqMethod >> isPrimitive [
+	"Implemented by Emy"
+	^ self primitive != nil.
+]
+
 { #category : #printing }
 TqMethod >> offsetOfCurrentEnvironment [
 	^ 0
