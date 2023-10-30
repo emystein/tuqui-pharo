@@ -155,24 +155,20 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitBlock: aTqBlock [
-	"self context captureClosure: aTqBlock"
-	
-	"
-	| last result |
-	last := nil.
-	aTqBlock statements do: [ :node |
-		last := node.
-		result := node acceptVisitor: self ].
-	^ (last notNil and: [ last isReturn ])
-		  ifTrue: [ result ]
-		  ifFalse: [ self context receiver ]
-  "
-	^ nil
+	^ aTqBlock compiledCode
+			ifNil: [ aTqBlock ] 
+			ifNotNil: [ self context captureClosure: aTqBlock ]
+
 ]
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [ 
 	^ aTqIdentifier binding valueWithin: self context
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitLiteral: aTqLiteral [ 
+	^aTqLiteral value
 ]
 
 { #category : #visiting }
@@ -186,11 +182,15 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: args ].
-	
-	"self context self: receiver; method: method; arguments: args."
-	
+
+"
+	method ifNotNil: [  
+		self context self: receiver; method: method; arguments: args.
+	].
+	"
+		
 	method isBytes ifTrue: [ ^ receiver ].
-	
+
 	sexpressions := runtime sexpressionsOf: method.
 	self visitMethod: sexpressions.
 ]
@@ -201,9 +201,10 @@ TqRecursiveEvaluator >> visitMethod: aTqMethod [
 	last := nil.
 	aTqMethod statements do: [ :node |
 		last := node.
-		result := node acceptVisitor: self ].
-	^ (last notNil and: [ last isReturn ])
-		  ifTrue: [ result ]
+		result := node acceptVisitor: self.
+	].
+	^ (last notNil and: [ result notNil ])
+		  ifTrue: [ result]
 		  ifFalse: [ self context receiver ]
 
 ]
