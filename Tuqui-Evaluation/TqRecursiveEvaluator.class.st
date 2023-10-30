@@ -155,8 +155,18 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitBlock: aTqBlock [
-	"self context captureClosure: aTqBlock."
+	"self context captureClosure: aTqBlock"
 	
+	"
+	| last result |
+	last := nil.
+	aTqBlock statements do: [ :node |
+		last := node.
+		result := node acceptVisitor: self ].
+	^ (last notNil and: [ last isReturn ])
+		  ifTrue: [ result ]
+		  ifFalse: [ self context receiver ]
+  "
 
 ]
 
@@ -168,7 +178,7 @@ TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
-	| receiver args method sexpressions |
+	| receiver args method primitive sexpressions |
 	
 	receiver := aTqMessage receiver acceptVisitor: self.
 	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
@@ -177,47 +187,11 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: args ].
 	
-	"self context receiver: receiver; method: method; arguments: args."
+	"self context self: receiver; method: method; arguments: args."
 	
 	sexpressions := runtime sexpressionsOf: method.
 	
 	self visitMethod: sexpressions.
-]
-
-{ #category : #visiting }
-TqRecursiveEvaluator >> visitMessageBackup: aTqMessage [
-
-	| receiver args method |
-	
-	receiver := aTqMessage receiver acceptVisitor: self.
-
-"
-	
-	(undermessages includesKey: aTqMessage selector)
-			ifTrue: [ ^ (undermessages at: aTqMessage selector) value: receiver value: aTqMessage arguments].
-
-	
-	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
-	
-
-" 
-
-"
-	args := aTqMessage arguments collect: [:arg | arg acceptVisitor: self].
-	"
-	
-	"
-	self pushFrameFor: method recv: receiver args: args.
-	"
-
-"
-	self visitMethod: method ast
-"
-
-	(undermessages includesKey: aTqMessage selector)
-			ifTrue: [ ^ (undermessages at: aTqMessage selector) value: receiver value: aTqMessage arguments].
-			
-	self shouldBeImplemented 
 ]
 
 { #category : #visiting }
