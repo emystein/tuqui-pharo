@@ -167,7 +167,7 @@ TqRecursiveEvaluator >> visitBlock: aTqBlock [
 		  ifTrue: [ result ]
 		  ifFalse: [ self context receiver ]
   "
-
+	^ nil
 ]
 
 { #category : #visiting }
@@ -178,7 +178,7 @@ TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
-	| receiver args method primitive sexpressions |
+	| receiver args method sexpressions |
 	
 	receiver := aTqMessage receiver acceptVisitor: self.
 	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
@@ -189,8 +189,9 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	
 	"self context self: receiver; method: method; arguments: args."
 	
-	sexpressions := runtime sexpressionsOf: method.
+	method isBytes ifTrue: [ ^ receiver ].
 	
+	sexpressions := runtime sexpressionsOf: method.
 	self visitMethod: sexpressions.
 ]
 
