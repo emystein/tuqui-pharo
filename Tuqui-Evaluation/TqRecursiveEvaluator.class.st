@@ -80,15 +80,10 @@ TqRecursiveEvaluator >> initializePrimitives [
 { #category : #accessing }
 TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [
 | methodDictionary |
-	"
-	^ behavior isImmediate
-						ifTrue: [ aSymbol ]
-						ifFalse: [ 
-								methodDictionary := behavior slots at: 2.
-								methodDictionary atKey: aSymbol ifAbsent: [ nil ].
-							 ]
-"
+
 	behavior isImmediate ifTrue: [ ^ aSymbol ].
+
+	(aSymbol asLocalString beginsWith: '_') ifTrue: [ ^ aSymbol ].
 	
 	methodDictionary := behavior slots
 		ifEmpty: [ behavior behavior slots at: 2 ] 
@@ -110,6 +105,20 @@ TqRecursiveEvaluator >> primitiveClosureWhileTrue [
 	^ [ self
 		evaluateClosure: context self
 		whileTrue: context arguments first ]
+]
+
+{ #category : #'as yet unclassified' }
+TqRecursiveEvaluator >> pushFrameFor: method receiver: receiver arguments: arguments [ 
+	| size environment |
+	size := runtime methodEnvironmentSize: method.
+	environment := runtime newEnvironmentSized: size.
+	context := TqRecursiveLinkedContext new
+		           runtime: runtime;
+		           self: receiver;
+		           arguments: arguments;
+		           environment: environment;
+		           parent: context;
+		           method: method.
 ]
 
 { #category : #controlling }
@@ -168,31 +177,37 @@ TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitLiteral: aTqLiteral [ 
-	^aTqLiteral value
+	^ aTqLiteral value
 ]
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
-	| receiver args method sexpressions |
+	| receiver receiverIsSuper behavior args method sexpressions |
 	
 	receiver := aTqMessage receiver acceptVisitor: self.
-	method := self lookup: aTqMessage selector startingAt: receiver sendSite: nil.
+	
+	"TODO: Implement super".
+	receiverIsSuper := false.
+	behavior := receiverIsSuper
+		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
+		            ifFalse: [ runtime behaviorOf: receiver ].
+	method := self lookup: aTqMessage selector startingAt: behavior sendSite: nil.
 	args := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 	
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: args ].
 
-"
-	method ifNotNil: [  
-		self context self: receiver; method: method; arguments: args.
-	].
-	"
-		
-	method isBytes ifTrue: [ ^ receiver ].
+	"method isBlock ifTrue: [ ^ method value: receiver value: args ]."
+	
+	"method ifNotNil: [ self context self: receiver; method: method; arguments: args]."
+	method ifNotNil: [ self pushFrameFor: method receiver: receiver arguments: args].
+	
+	" This did the trick for passing tests 110, 111 and 112 the first time "		
+	"method isBytes ifTrue: [ ^ receiver ]."
 
 	sexpressions := runtime sexpressionsOf: method.
-	self visitMethod: sexpressions.
+	^ self visitMethod: sexpressions.
 ]
 
 { #category : #visiting }
