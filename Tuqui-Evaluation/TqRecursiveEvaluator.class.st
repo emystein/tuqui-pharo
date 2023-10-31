@@ -6,16 +6,16 @@ Class {
 
 { #category : #visiting }
 TqRecursiveEvaluator >> evalMethodStatements: aTqMethod [
-
 	| last result |
 	last := nil.
 	aTqMethod statements do: [ :node |
 		last := node.
-		result := node acceptVisitor: self ].
-	^ (last notNil and: [ last isReturn ])
-		  ifTrue: [ result ]
+		result := node acceptVisitor: self.
+	].
+	^ (last notNil and: [ result notNil ])
+		  ifTrue: [ result]
 		  ifFalse: [ self context receiver ]
- 
+
 ]
 
 { #category : #visiting }
@@ -217,17 +217,12 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 ]
 
 { #category : #visiting }
-TqRecursiveEvaluator >> visitMethod: aTqMethod [
-	| last result |
-	last := nil.
-	aTqMethod statements do: [ :node |
-		last := node.
-		result := node acceptVisitor: self.
-	].
-	^ (last notNil and: [ result notNil ])
-		  ifTrue: [ result]
-		  ifFalse: [ self context receiver ]
+TqRecursiveEvaluator >> visitMethod: aMethod [
 
+	| value |
+	^ aMethod isPrimitive
+		  ifTrue: [ self evalPrimitive: aMethod ]
+		  ifFalse: [ self evalMethodStatements: aMethod ]
 ]
 
 { #category : #visiting }
