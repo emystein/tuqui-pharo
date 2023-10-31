@@ -218,8 +218,6 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMethod: aMethod [
-
-	| value |
 	^ aMethod isPrimitive
 		  ifTrue: [ self evalPrimitive: aMethod ]
 		  ifFalse: [ self evalMethodStatements: aMethod ]
