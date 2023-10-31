@@ -10,11 +10,9 @@ Class {
 { #category : #'as yet unclassified' }
 TqRecursiveLinkedContext >> evaluateFor: interpreter [
 	| sexpressions result printStream|
-	"
-	printStream := WriteStream on: String new.
-	self printOn: printStream.
-	Transcript show: printStream contents.
-	"
+	"TODO: Delete"
+	Transcript clear.
+	
 	nonLocalReturn := [ :value | interpreter context: self homeContext parent. ^ value ].
 	sexpressions := runtime sexpressionsOf: method.
 	result := interpreter visitMethod: sexpressions.
