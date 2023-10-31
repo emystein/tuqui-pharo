@@ -60,6 +60,13 @@ TqRecursiveEvaluator >> evaluateMethodStatements: aTqMethod [
 
 ]
 
+{ #category : #'as yet unclassified' }
+TqRecursiveEvaluator >> evaluatePrimitive: aTqMethod [ 
+	| primitive |
+	primitive := self primitiveFor: aTqMethod pragma name.
+	^ primitive value.
+]
+
 { #category : #visiting }
 TqRecursiveEvaluator >> evaluateSend: symbol to: receiver with: anArray [
 
@@ -262,7 +269,7 @@ TqRecursiveEvaluator >> visitMessageBackup: aTqMessage [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMethod: aMethod [
 	^ aMethod isPrimitive
-		  ifTrue: [ self evalPrimitive: aMethod ]
+		  ifTrue: [ self evaluatePrimitive: aMethod ]
 		  ifFalse: [ self evaluateMethodStatements: aMethod ]
 ]
 
