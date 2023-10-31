@@ -79,18 +79,22 @@ TqRecursiveEvaluator >> initializePrimitives [
 
 { #category : #accessing }
 TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [
-| methodDictionary |
 
+	| methodDictionary |
 	behavior isImmediate ifTrue: [ ^ aSymbol ].
 
 	(aSymbol asLocalString beginsWith: '_') ifTrue: [ ^ aSymbol ].
-	
-	methodDictionary := behavior slots
-		ifEmpty: [ behavior behavior slots at: 2 ] 
-		ifNotEmpty: [ behavior slots at: 2].
-		
-	^ methodDictionary atKey: aSymbol ifAbsent: [ nil ].
 
+	methodDictionary := behavior slots
+		                    ifEmpty: [ behavior behavior slots at: 2 ]
+		                    ifNotEmpty: [ behavior slots at: 2 ].
+
+	^ methodDictionary atKey: aSymbol ifAbsent: [ nil ]
+]
+
+{ #category : #'as yet unclassified' }
+TqRecursiveEvaluator >> popFrame [
+	context := context parent
 ]
 
 { #category : #visiting }
@@ -199,12 +203,14 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 		^ (undermessages at: method) value: receiver value: args ].
 
 	"method isBlock ifTrue: [ ^ method value: receiver value: args ]."
-	
-	"method ifNotNil: [ self context self: receiver; method: method; arguments: args]."
-	method ifNotNil: [ self pushFrameFor: method receiver: receiver arguments: args].
-	
-	" This did the trick for passing tests 110, 111 and 112 the first time "		
+
+
+	" This did the trick for passing tests 110, 111 and 112 the first time (currently replaced with method ifNil: [ ^ receiver ]"		
 	"method isBytes ifTrue: [ ^ receiver ]."
+	
+	method
+		ifNil: [ ^ receiver ]
+		ifNotNil: [ self pushFrameFor: method receiver: receiver arguments: args].
 
 	sexpressions := runtime sexpressionsOf: method.
 	^ self visitMethod: sexpressions.
@@ -225,13 +231,12 @@ TqRecursiveEvaluator >> visitMethod: aTqMethod [
 ]
 
 { #category : #visiting }
-TqRecursiveEvaluator >> visitReturn: aTqReturn [ 
-	
-	| value |
+TqRecursiveEvaluator >> visitReturn: aTqReturn [
 
+	| value valueToReturn |
+	"aTqReturn local ifFalse: [ ^ self visitNonLocalReturn: aTqReturn ]."
 	value := aTqReturn expression acceptVisitor: self.
-
-	"self context pop."
-
-	^ self context return: value
+	valueToReturn := self context return: value.
+	self popFrame.
+	^ valueToReturn
 ]
