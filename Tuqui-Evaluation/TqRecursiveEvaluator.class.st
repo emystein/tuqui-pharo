@@ -195,9 +195,10 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitAssignment: aTqAssignment [
 
-	| value |
+	| binding value |
 	value := aTqAssignment expression acceptVisitor: self.
-	^ aTqAssignment binding acceptWrite: self with: value
+	binding := aTqAssignment assignees last binding.
+	^ binding assign: value within: context
 ]
 
 { #category : #visiting }

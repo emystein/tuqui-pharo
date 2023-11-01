@@ -470,6 +470,39 @@ TqEvaluationTest >> test310smiFallbackToLPI [
 ]
 
 { #category : #tests }
+TqEvaluationTest >> testAssignAndReturnTemp [
+	| result |
+	self
+		compile: 'foo | temp | temp := 5. ^ temp.'
+		in: #ProtoObject
+		during: [ result := runtime sendLocal: #foo to: runtime true.
+			self assert: result equals: self ==> 5 ].
+	self assertNoLeftoverFrames
+]
+
+{ #category : #tests }
+TqEvaluationTest >> testAssignTwoTempsAndReturnFirstTemp [
+	| result |
+	self
+		compile: 'foo | temp1 temp2 | temp1 := 1. temp2 := 2. ^ temp1.'
+		in: #ProtoObject
+		during: [ result := runtime sendLocal: #foo to: runtime true.
+			self assert: result equals: self ==> 1 ].
+	self assertNoLeftoverFrames
+]
+
+{ #category : #tests }
+TqEvaluationTest >> testAssignTwoTempsAndReturnSecondTemp [
+	| result |
+	self
+		compile: 'foo | temp1 temp2 | temp1 := 1. temp2 := 2. ^ temp2.'
+		in: #ProtoObject
+		during: [ result := runtime sendLocal: #foo to: runtime true.
+			self assert: result equals: self ==> 2 ].
+	self assertNoLeftoverFrames
+]
+
+{ #category : #tests }
 TqEvaluationTest >> testReturnNumber [
 	| result |
 	self
