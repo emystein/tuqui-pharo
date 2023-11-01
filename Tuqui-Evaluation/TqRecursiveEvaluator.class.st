@@ -4,6 +4,20 @@ Class {
 	#category : #'Tuqui-Evaluation-Runtime'
 }
 
+{ #category : #'as yet unclassified' }
+TqRecursiveEvaluator >> evaluateBlock: aTqBlock withArguments: arguments [
+	| closure sexpressions |
+	self ASSERT: aTqBlock isInlined.
+	^ aTqBlock isInlined
+		ifTrue:  [ self evaluateMethodStatements: aTqBlock ]
+		"
+		ifFalse: [ 
+			closure := context captureClosure: aTqBlock.
+			self evaluateClosure: closure withArgs: arguments
+			 ]
+		"
+]
+
 { #category : #visiting }
 TqRecursiveEvaluator >> evaluateClosure: receiver whileFalse: arg [
 	| result |
@@ -181,6 +195,14 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 ]
 
 { #category : #visiting }
+TqRecursiveEvaluator >> visitAssignment: aTqAssignment [
+
+	| value |
+	value := aTqAssignment expression acceptVisitor: self.
+	^ aTqAssignment binding acceptWrite: self with: value
+]
+
+{ #category : #visiting }
 TqRecursiveEvaluator >> visitBlock: aTqBlock [
 	^ aTqBlock isInlined
 			ifTrue: [ aTqBlock ] "TODO: evaluate aTqBlock ? "
@@ -202,12 +224,15 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
 	| receiver searchStartingAtSuper behavior arguments method sexpressions |
 	receiver := aTqMessage receiver acceptVisitor: self.
+	arguments := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
+	
+	receiver isBlock ifTrue: [ ^ self evaluateBlock: receiver withArguments: arguments ].
+		
 	searchStartingAtSuper := false.
 	behavior := searchStartingAtSuper
 		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
 		            ifFalse: [ runtime behaviorOf: receiver ].
 	method := self lookup: aTqMessage selector startingAt: behavior.
-	arguments := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: arguments ].
