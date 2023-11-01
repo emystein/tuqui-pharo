@@ -4,20 +4,6 @@ Class {
 	#category : #'Tuqui-Evaluation-Runtime'
 }
 
-{ #category : #'as yet unclassified' }
-TqRecursiveEvaluator >> evaluateBlock: aTqBlock withArguments: arguments [
-	| closure sexpressions |
-	self ASSERT: aTqBlock isInlined.
-	^ aTqBlock isInlined
-		ifTrue:  [ self evaluateMethodStatements: aTqBlock ]
-		"
-		ifFalse: [ 
-			closure := context captureClosure: aTqBlock.
-			self evaluateClosure: closure withArgs: arguments
-			 ]
-		"
-]
-
 { #category : #visiting }
 TqRecursiveEvaluator >> evaluateClosure: receiver whileFalse: arg [
 	| result |
@@ -52,6 +38,18 @@ TqRecursiveEvaluator >> evaluateClosure: closure withArgs: arguments [
 	result := nilObj.
 	sblock statements do: [ :node | result := node acceptVisitor: self ].
 	^ result
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> evaluateInlinedBlock: aTqBlock [
+	"	^ aTqBlock "
+	| result |
+	result := nilObj.
+	aTqBlock statements do: [ :node | result := node acceptVisitor: self ].
+	^ result
+	
+
+
 ]
 
 { #category : #visiting }
@@ -205,7 +203,7 @@ TqRecursiveEvaluator >> visitAssignment: aTqAssignment [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitBlock: aTqBlock [
 	^ aTqBlock isInlined
-			ifTrue: [ aTqBlock ] "TODO: evaluate aTqBlock ? "
+			ifTrue: [ self evaluateInlinedBlock: aTqBlock ]
 			ifFalse: [ self context captureClosure: aTqBlock ]
 ]
 
@@ -226,7 +224,10 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	receiver := aTqMessage receiver acceptVisitor: self.
 	arguments := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 	
+	"
 	receiver isBlock ifTrue: [ ^ self evaluateBlock: receiver withArguments: arguments ].
+		"
+	receiver isBlock ifTrue: [ ^ self visitBlock: receiver ].
 		
 	searchStartingAtSuper := false.
 	behavior := searchStartingAtSuper
@@ -237,44 +238,15 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: arguments ].
 
+"
 	method
 		ifNil: [ ^ receiver ]
 		ifNotNil: [ self pushFrameFor: method receiver: receiver arguments: arguments ].
+"
+	self pushFrameFor: method receiver: receiver arguments: arguments.
 
 	sexpressions := runtime sexpressionsOf: method.
 	^ self visitMethod: sexpressions
-]
-
-{ #category : #visiting }
-TqRecursiveEvaluator >> visitMessageBackup: aTqMessage [
-
-	| receiver receiverIsSuper behavior args method sexpressions |
-	
-	receiver := aTqMessage receiver acceptVisitor: self.
-	
-	"TODO: Implement super".
-	receiverIsSuper := false.
-	behavior := receiverIsSuper
-		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
-		            ifFalse: [ runtime behaviorOf: receiver ].
-	method := self lookup: aTqMessage selector startingAt: behavior sendSite: nil.
-	args := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
-	
-	(undermessages includesKey: method) ifTrue: [
-		^ (undermessages at: method) value: receiver value: args ].
-
-	"method isBlock ifTrue: [ ^ method value: receiver value: args ]."
-
-
-	" This did the trick for passing tests 110, 111 and 112 the first time (currently replaced with method ifNil: [ ^ receiver ]"		
-	"method isBytes ifTrue: [ ^ receiver ]."
-	
-	method
-		ifNil: [ ^ receiver ]
-		ifNotNil: [ self pushFrameFor: method receiver: receiver arguments: args].
-
-	sexpressions := runtime sexpressionsOf: method.
-	^ self visitMethod: sexpressions.
 ]
 
 { #category : #visiting }
@@ -290,7 +262,8 @@ TqRecursiveEvaluator >> visitReturn: aTqReturn [
 	| value valueToReturn |
 	"aTqReturn local ifFalse: [ ^ self visitNonLocalReturn: aTqReturn ]."
 	value := aTqReturn expression acceptVisitor: self.
-	valueToReturn := self context return: value.
+	"valueToReturn := self context return: value."
+	valueToReturn := value.
 	self popFrame.
 	^ valueToReturn
 ]
