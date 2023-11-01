@@ -42,13 +42,15 @@ TqRecursiveEvaluator >> evaluateClosure: closure withArgs: arguments [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> evaluateInlinedBlock: aTqBlock [
-	"	^ aTqBlock "
+"
 	| result |
 	result := nilObj.
 	aTqBlock statements do: [ :node | result := node acceptVisitor: self ].
 	^ result
-	
+"
 
+
+	^ aTqBlock 
 
 ]
 
@@ -58,15 +60,15 @@ TqRecursiveEvaluator >> evaluateMethodStatements: aTqMethod [
 	last := nil.
 	aTqMethod statements do: [ :node |
 		last := node.
-		
+		"
 		printStream := WriteStream on: String new.
 		node printOn: printStream.
 		printStream nextPut: Character cr.
 		Transcript show: printStream contents.
-	
+		"
 		result := node acceptVisitor: self.
 	].
-	^ (last notNil and: [ result notNil ])
+	^ (last notNil and: [ last isReturn ])
 		  ifTrue: [ result]
 		  ifFalse: [ self context receiver ]
 
@@ -206,6 +208,7 @@ TqRecursiveEvaluator >> visitBlock: aTqBlock [
 	^ aTqBlock isInlined
 			ifTrue: [ self evaluateInlinedBlock: aTqBlock ]
 			ifFalse: [ self context captureClosure: aTqBlock ]
+
 ]
 
 { #category : #visiting }
@@ -222,28 +225,23 @@ TqRecursiveEvaluator >> visitLiteral: aTqLiteral [
 TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
 	| receiver searchStartingAtSuper behavior arguments method sexpressions |
-	receiver := aTqMessage receiver acceptVisitor: self.
-	arguments := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 	
-	"
-	receiver isBlock ifTrue: [ ^ self evaluateBlock: receiver withArguments: arguments ].
-		"
+	receiver := aTqMessage receiver acceptVisitor: self.
+	
 	receiver isBlock ifTrue: [ ^ self visitBlock: receiver ].
 		
 	searchStartingAtSuper := false.
 	behavior := searchStartingAtSuper
 		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
 		            ifFalse: [ runtime behaviorOf: receiver ].
+
 	method := self lookup: aTqMessage selector startingAt: behavior.
+
+	arguments := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: arguments ].
 
-"
-	method
-		ifNil: [ ^ receiver ]
-		ifNotNil: [ self pushFrameFor: method receiver: receiver arguments: arguments ].
-"
 	self pushFrameFor: method receiver: receiver arguments: arguments.
 
 	sexpressions := runtime sexpressionsOf: method.
