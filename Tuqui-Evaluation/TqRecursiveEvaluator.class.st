@@ -108,16 +108,12 @@ TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior [
 { #category : #accessing }
 TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [
 
-	| methodDictionary |
 	behavior isImmediate ifTrue: [ ^ aSymbol ].
 
 	(aSymbol asLocalString beginsWith: '_') ifTrue: [ ^ aSymbol ].
 
-	methodDictionary := behavior slots
-		                    ifEmpty: [ behavior behavior slots at: 2 ]
-		                    ifNotEmpty: [ behavior slots at: 2 ].
+	^ runtime doLookup: aSymbol startingAt: behavior
 
-	^ methodDictionary atKey: aSymbol ifAbsent: [ nil ]
 ]
 
 { #category : #'as yet unclassified' }

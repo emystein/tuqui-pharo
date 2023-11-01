@@ -468,3 +468,14 @@ TqEvaluationTest >> test310smiFallbackToLPI [
 				assert: result value asLocalString equals: expected printString ].
 	self assertNoLeftoverFrames
 ]
+
+{ #category : #tests }
+TqEvaluationTest >> testReturnNumber [
+	| result |
+	self
+		compile: 'foo ^5.'
+		in: #ProtoObject
+		during: [ result := runtime sendLocal: #foo to: runtime true.
+			self assert: result equals: self ==> 5 ].
+	self assertNoLeftoverFrames
+]
