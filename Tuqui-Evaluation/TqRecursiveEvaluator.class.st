@@ -41,20 +41,6 @@ TqRecursiveEvaluator >> evaluateClosure: closure withArgs: arguments [
 ]
 
 { #category : #visiting }
-TqRecursiveEvaluator >> evaluateInlinedBlock: aTqBlock [
-"
-	| result |
-	result := nilObj.
-	aTqBlock statements do: [ :node | result := node acceptVisitor: self ].
-	^ result
-"
-
-
-	^ aTqBlock 
-
-]
-
-{ #category : #visiting }
 TqRecursiveEvaluator >> evaluateMethodStatements: aTqMethod [
 	| last result printStream |
 	last := nil.
@@ -205,9 +191,7 @@ TqRecursiveEvaluator >> visitAssignment: aTqAssignment [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitBlock: aTqBlock [
-	^ aTqBlock isInlined
-			ifTrue: [ self evaluateInlinedBlock: aTqBlock ]
-			ifFalse: [ self context captureClosure: aTqBlock ]
+	^ self context captureClosure: aTqBlock
 
 ]
 
@@ -228,7 +212,7 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	
 	receiver := aTqMessage receiver acceptVisitor: self.
 	
-	receiver isBlock ifTrue: [ ^ self visitBlock: receiver ].
+	"receiver isBlock ifTrue: [ ^ self visitBlock: receiver ]."
 		
 	searchStartingAtSuper := false.
 	behavior := searchStartingAtSuper
