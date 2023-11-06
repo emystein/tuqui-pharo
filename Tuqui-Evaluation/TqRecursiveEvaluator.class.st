@@ -226,10 +226,13 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: arguments ].
 	
+	"
 	self pushFrameFor: method receiver: receiver arguments: arguments.
 
 	sexpressions := runtime sexpressionsOf: method.
 	^ self visitMethod: sexpressions
+	"
+	^ self send: aTqMessage selector to: receiver with: arguments super: false.
 ]
 
 { #category : #visiting }
