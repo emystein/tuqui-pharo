@@ -54,6 +54,7 @@ TqRecursiveEvaluator >> evaluateMethodStatements: aTqMethod [
 		"
 		result := node acceptVisitor: self.
 	].
+
 	^ (last notNil and: [ last isReturn ])
 		  ifTrue: [ result]
 		  ifFalse: [ self context receiver ]
@@ -137,6 +138,7 @@ TqRecursiveEvaluator >> pushFrameFor: method receiver: receiver arguments: argum
 		           environment: environment;
 		           parent: context;
 		           method: method.
+	receiver isBlock ifTrue: [ context beBlock ].
 ]
 
 { #category : #controlling }
@@ -211,8 +213,6 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 	| receiver searchStartingAtSuper behavior arguments method sexpressions |
 	
 	receiver := aTqMessage receiver acceptVisitor: self.
-	
-	"receiver isBlock ifTrue: [ ^ self visitBlock: receiver ]."
 		
 	searchStartingAtSuper := false.
 	behavior := searchStartingAtSuper
@@ -225,7 +225,7 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: arguments ].
-
+	
 	self pushFrameFor: method receiver: receiver arguments: arguments.
 
 	sexpressions := runtime sexpressionsOf: method.
@@ -234,19 +234,29 @@ TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMethod: aMethod [
-	^ aMethod isPrimitive
+	| result |
+	result := aMethod isPrimitive
 		  ifTrue: [ self evaluatePrimitive: aMethod ]
-		  ifFalse: [ self evaluateMethodStatements: aMethod ]
+		  ifFalse: [ self evaluateMethodStatements: aMethod ].
+	self popFrame.
+	^ result.
+]
+
+{ #category : #visiting }
+TqRecursiveEvaluator >> visitNonLocalReturn: aTqReturn [
+	| value |
+	value := aTqReturn expression acceptVisitor: self.
+	context homeContext nonLocalReturn: value.
 ]
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitReturn: aTqReturn [
 
-	| value valueToReturn |
-	"aTqReturn local ifFalse: [ ^ self visitNonLocalReturn: aTqReturn ]."
+	| value returnValue |	
+	aTqReturn local ifFalse: [ ^ self visitNonLocalReturn: aTqReturn ].
 	value := aTqReturn expression acceptVisitor: self.
-	"valueToReturn := self context return: value."
-	valueToReturn := value.
-	self popFrame.
-	^ valueToReturn
+	"returnValue := self context return: value."
+	"Moved at the end of visitMethod"
+	"self popFrame."
+	^ value
 ]

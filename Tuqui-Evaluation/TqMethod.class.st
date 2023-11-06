@@ -19,7 +19,6 @@ TqMethod >> isMethod [
 
 { #category : #testing }
 TqMethod >> isPrimitive [
-	"Implemented by Emy"
 	^ self primitive != nil.
 ]
 
