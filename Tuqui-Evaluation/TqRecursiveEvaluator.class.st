@@ -5,6 +5,16 @@ Class {
 }
 
 { #category : #visiting }
+TqRecursiveEvaluator >> behaviorOf: receiver startingAtSuper: searchStartingAtSuper [
+
+	| behavior |
+	behavior := searchStartingAtSuper
+		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
+		            ifFalse: [ runtime behaviorOf: receiver ].
+	^ behavior
+]
+
+{ #category : #visiting }
 TqRecursiveEvaluator >> evaluateClosure: receiver whileFalse: arg [
 	| result |
 	[ result := self evaluateClosure: receiver.
@@ -98,11 +108,6 @@ TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior [
 
 { #category : #accessing }
 TqRecursiveEvaluator >> lookup: aSymbol startingAt: behavior sendSite: anUndefinedObject [
-
-	behavior isImmediate ifTrue: [ ^ aSymbol ].
-
-	(aSymbol asLocalString beginsWith: '_') ifTrue: [ ^ aSymbol ].
-
 	^ runtime doLookup: aSymbol startingAt: behavior
 
 ]
@@ -142,20 +147,16 @@ TqRecursiveEvaluator >> pushFrameFor: method receiver: receiver arguments: argum
 ]
 
 { #category : #controlling }
-TqRecursiveEvaluator >> send: aSymbol to: receiver with: arguments super: aBoolean [ 
-	^  self send: aSymbol to: receiver with: arguments super: aBoolean sendSite: nil
+TqRecursiveEvaluator >> send: symbol to: receiver with: arguments super: isSuper [ 
+	^  self send: symbol to: receiver with: arguments super: isSuper sendSite: nil
 ]
 
 { #category : #visiting }
 TqRecursiveEvaluator >> send: aSymbol to: receiver with: arguments super: aBoolean sendSite: anSMessage [
 
 	| behavior method environment size |
-	
-	aSymbol asLocalString = 'yourself' ifTrue: [ ^ receiver ].
-	
-	behavior := aBoolean
-		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
-		            ifFalse: [ runtime behaviorOf: receiver ].
+	behavior := self behaviorOf: receiver startingAtSuper: aBoolean.
+
 	method := self
 		          lookup: aSymbol
 		          startingAt: behavior
@@ -186,9 +187,14 @@ TqRecursiveEvaluator >> superBehaviorOf: class [
 TqRecursiveEvaluator >> visitAssignment: aTqAssignment [
 
 	| binding value |
+	"
 	value := aTqAssignment expression acceptVisitor: self.
 	binding := aTqAssignment assignees last binding.
 	^ binding assign: value within: context
+	"
+	value := aTqAssignment expression acceptVisitor: self.
+	aTqAssignment assignees do: [ :assignee | assignee binding  assign: value within: self context ].
+	 ^ value
 ]
 
 { #category : #visiting }
@@ -210,39 +216,39 @@ TqRecursiveEvaluator >> visitLiteral: aTqLiteral [
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMessage: aTqMessage [
 
-	| receiver searchStartingAtSuper behavior arguments method sexpressions |
-	
+	| selector receiver receiverIsSuper arguments |
+	selector := aTqMessage selector.
+	receiverIsSuper := aTqMessage receiver isSuper.
 	receiver := aTqMessage receiver acceptVisitor: self.
-		
-	searchStartingAtSuper := false.
-	behavior := searchStartingAtSuper
-		            ifTrue: [ runtime superBehaviorOf: context classBinding ]
-		            ifFalse: [ runtime behaviorOf: receiver ].
+	arguments := aTqMessage arguments collect: [ :argument | argument acceptVisitor: self ].
+	
+  "
+	behavior := self
+		            behaviorOf: receiver
+		            startingAtSuper: receiverIsSuper.
 
 	method := self lookup: aTqMessage selector startingAt: behavior.
 
-	arguments := aTqMessage arguments collect: [ :arg2 | arg2 acceptVisitor: self ].
 
 	(undermessages includesKey: method) ifTrue: [
 		^ (undermessages at: method) value: receiver value: arguments ].
+	"
 	
-	"
-	self pushFrameFor: method receiver: receiver arguments: arguments.
+	undermessages at: selector ifPresent: [ :v | ^ v value: receiver value: arguments ].
 
-	sexpressions := runtime sexpressionsOf: method.
-	^ self visitMethod: sexpressions
-	"
-	^ self send: aTqMessage selector to: receiver with: arguments super: false.
+	^ self
+		  send: selector
+		  to: receiver
+		  with: arguments
+		  super: receiverIsSuper
 ]
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitMethod: aMethod [
-	| result |
-	result := aMethod isPrimitive
+	^ aMethod isPrimitive
 		  ifTrue: [ self evaluatePrimitive: aMethod ]
 		  ifFalse: [ self evaluateMethodStatements: aMethod ].
-	self popFrame.
-	^ result.
+
 ]
 
 { #category : #visiting }
@@ -254,12 +260,9 @@ TqRecursiveEvaluator >> visitNonLocalReturn: aTqReturn [
 
 { #category : #visiting }
 TqRecursiveEvaluator >> visitReturn: aTqReturn [
-
-	| value returnValue |	
-	aTqReturn local ifFalse: [ ^ self visitNonLocalReturn: aTqReturn ].
-	value := aTqReturn expression acceptVisitor: self.
-	"returnValue := self context return: value."
-	"Moved at the end of visitMethod"
-	"self popFrame."
-	^ value
+	| result |
+	result := aTqReturn expression acceptVisitor: self.
+	aTqReturn local ifFalse: [ ^ self context return: result ].
+	self popFrame.
+	^ result
 ]

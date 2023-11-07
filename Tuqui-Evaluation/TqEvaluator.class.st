@@ -209,11 +209,11 @@ TqEvaluator >> primitiveAtPut [
 
 { #category : #primitives }
 TqEvaluator >> primitiveBehavior [
+
 	| receiver |
-	^ [ receiver := context self.
-	receiver isImmediate
-		ifTrue: [ self smallintBehavior ]
-		ifFalse: [ receiver behavior ] ]
+	^ [
+	  receiver := context self.
+	  self runtime behaviorOf: receiver ]
 ]
 
 { #category : #primitives }
