@@ -168,7 +168,7 @@ TqEvaluationContext >> staticBindingForCvar: symbol [
 	class := runtime speciesInstanceClass: species.
 	nilObj := runtime nil.
 	[ cvars := runtime classCvars: class.
-			cvars associationAtKey: symbol ifPresent: [ :assoc | ^ SAssociationBinding new association: assoc ].
+			cvars associationAtKey: symbol ifPresent: [ :assoc | ^ TqAssociationBinding new association: assoc ].
 	class := runtime speciesSuperclass: class.
 	class = nilObj ] whileFalse.
 	^ nil

@@ -204,6 +204,15 @@ TqRecursiveEvaluator >> visitBlock: aTqBlock [
 ]
 
 { #category : #visiting }
+TqRecursiveEvaluator >> visitCascade: aTqCascade [ 
+	| receiver lastResult | 
+	lastResult := nil.
+	receiver :=  aTqCascade receiver acceptVisitor: self.
+	aTqCascade messages do: [ :message | lastResult := self visiteCascadeMessage: message for: receiver. ].
+	^ lastResult.
+]
+
+{ #category : #visiting }
 TqRecursiveEvaluator >> visitIdentifier: aTqIdentifier [ 
 	^ aTqIdentifier binding valueWithin: self context
 ]
@@ -265,4 +274,13 @@ TqRecursiveEvaluator >> visitReturn: aTqReturn [
 	aTqReturn local ifFalse: [ ^ self context return: result ].
 	self popFrame.
 	^ result
+]
+
+{ #category : #'as yet unclassified' }
+TqRecursiveEvaluator >> visiteCascadeMessage: aTqCascadeMessage for: receiver [ 
+	|selector arguments|
+	selector := aTqCascadeMessage selector.
+	arguments := aTqCascadeMessage arguments collect: [ :arg | arg acceptVisitor: self ].
+	"TODO: Support super"
+	^ self send: selector to: receiver with: arguments super: false.
 ]
